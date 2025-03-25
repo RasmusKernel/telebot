@@ -96,7 +96,7 @@ Cuerpo:
 
 {
   "id_celular": 1,
-  "destinatario": "+51948061056",
+  "destinatario": "+51xxxxxxxxx",
   "mensaje": "Hola bro",
   "titulo": "Saludo"
 }
@@ -105,7 +105,7 @@ Respuesta:
 
 {
   "status": "success",
-  "message": "Mensaje enviado a +51948061056"
+  "message": "Mensaje enviado a +51xxxxxxxxx"
 }
 ```
 
