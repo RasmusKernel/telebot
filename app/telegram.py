@@ -25,9 +25,7 @@ async def enviar_mensaje(id_celular, destinatario, mensaje, titulo):
     session_path = f"session/{numero.replace('+', '')}.session"
     os.makedirs("session", exist_ok=True)
     client = TelegramClient(session_path, api_id, api_hash)
-
     await client.start(numero)
-
     contact = InputPhoneContact(client_id=0, phone=destinatario, first_name=destinatario, last_name="")
     result = await client(ImportContactsRequest([contact]))
 

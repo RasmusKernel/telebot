@@ -1,10 +1,19 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Flask
 import asyncio
+import os
+from telethon import TelegramClient
 from .telegram import enviar_mensaje, obtener_credenciales
 from .database import db
 from .models import Celular
+import asyncio
 
 bp = Blueprint("routes", __name__)
+
+SESSION_DIR = "session"
+os.makedirs(SESSION_DIR, exist_ok=True)
+session = {}
+
+phone_code_cache = {}
 
 @bp.route('/enviar_mensaje', methods=['POST'])
 def api_enviar_mensaje():
@@ -40,3 +49,74 @@ def api_guardar_numero():
 def api_listar_numeros():
     numeros = Celular.query.with_entities(Celular.id, Celular.numero, Celular.nombre).all()
     return jsonify({"status": "success", "data": [{"id": n.id, "numero": n.numero, "nombre": n.nombre} for n in numeros]})
+
+
+async def send_code(client, numero):
+    await client.connect()
+    phone_code_hash = await client.send_code_request(numero)
+    return phone_code_hash
+
+async def iniciar_sesion_async(numero, api_id, api_hash):
+    session_path = f"session/{numero.replace('+', '')}.session"
+    os.makedirs("session", exist_ok=True)
+
+    client = TelegramClient(session_path, api_id, api_hash)
+    await client.connect()
+
+    if not await client.is_user_authorized():
+        code_request = await client.send_code_request(numero)
+        phone_code_cache[numero] = code_request.phone_code_hash  # Guardar el hash temporalmente
+        return {"status": "pending", "message": "Código enviado.", "numero": numero}
+
+    return {"status": "success", "message": "Sesión ya iniciada."}
+
+async def verificar_codigo_async(numero, codigo, api_id, api_hash):
+    session_path = f"session/{numero.replace('+', '')}.session"
+    client = TelegramClient(session_path, api_id, api_hash)
+
+    await client.connect()
+
+    if numero not in phone_code_cache:
+        return {"status": "error", "message": "Código no solicitado o ha expirado."}
+
+    try:
+        phone_code_hash = phone_code_cache.pop(numero)  # Recuperar y eliminar el hash almacenado
+        await client.sign_in(numero, code=codigo, phone_code_hash=phone_code_hash)
+        return {"status": "success", "message": "Sesión iniciada correctamente."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        await client.disconnect()
+
+@bp.route('/iniciar_sesion', methods=['POST'])
+def iniciar_sesion():
+    data = request.json
+    numero = data.get("numero")
+    api_id = data.get("api_id")
+    api_hash = data.get("api_hash")
+
+    if not all([numero, api_id, api_hash]):
+        return jsonify({"status": "error", "message": "Faltan datos"}), 400
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    resultado = loop.run_until_complete(iniciar_sesion_async(numero, api_id, api_hash))
+    
+    return jsonify(resultado)
+
+@bp.route('/verificar_codigo', methods=['POST'])
+def verificar_codigo():
+    data = request.json
+    numero = data.get("numero")
+    codigo = data.get("codigo")
+    api_id = data.get("api_id")
+    api_hash = data.get("api_hash")
+
+    if not all([numero, codigo, api_id, api_hash]):
+        return jsonify({"status": "error", "message": "Faltan datos"}), 400
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    resultado = loop.run_until_complete(verificar_codigo_async(numero, codigo, api_id, api_hash))
+
+    return jsonify(resultado)
