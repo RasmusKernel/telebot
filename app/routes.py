@@ -62,17 +62,6 @@ async def send_code(client, numero):
     phone_code_hash = await client.send_code_request(numero)
     return phone_code_hash
 
-""" async def iniciar_sesion_async(numero, api_id, api_hash):
-    session_path = f"session/{numero.replace('+', '')}.session"
-    os.makedirs("session", exist_ok=True)
-    client = TelegramClient(session_path, api_id, api_hash)
-    await client.connect()
-    if not await client.is_user_authorized():
-        code_request = await client.send_code_request(numero)
-        phone_code_cache[numero] = code_request.phone_code_hash  # Guardar el hash temporalmente
-        return {"status": "pending", "message": "Código enviado.", "numero": numero}
-    return {"status": "success", "message": "Sesión ya iniciada."} """
-
 async def iniciar_sesion_async(numero, api_id, api_hash):
     session_path = f"session/{numero.replace('+', '')}.session"
     os.makedirs("session", exist_ok=True)
@@ -99,37 +88,6 @@ async def verificar_codigo_async(numero, codigo, api_id, api_hash):
     finally:
         await client.disconnect()
 
-""" async def verificar_codigo_async(numero, codigo, api_id, api_hash):
-    session_path = f"session/{numero.replace('+', '')}.session"
-    client = TelegramClient(session_path, api_id, api_hash)
-    await client.connect()
-    if numero not in phone_code_cache:
-        return {"status": "error", "message": "Código no solicitado o ha expirado."}
-    try:
-        phone_code_hash = phone_code_cache.pop(numero)  # Recuperar y eliminar el hash almacenado
-        await client.sign_in(numero, code=codigo, phone_code_hash=phone_code_hash)
-        return {"status": "success", "message": "Sesión iniciada correctamente."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-    finally:
-        await client.disconnect() """
-
-""" @bp.route('/v1/codigo', methods=['POST'])
-def iniciar_sesion():
-    data = request.json
-    id_celular = data.get("id_celular")
-    celular = Celular.query.get(id_celular)
-    if not celular:
-        return jsonify({"status": "error", "message": "Celular no encontrado"}), 400
-    numero = celular.numero
-    api_id = celular.app_id
-    api_hash = celular.api_hash
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    resultado = loop.run_until_complete(iniciar_sesion_async(numero, api_id, api_hash))
-    
-    return jsonify(resultado) """
-
 @bp.route('/v1/codigo', methods=['POST'])
 def iniciar_sesion():
     data = request.json
@@ -139,23 +97,6 @@ def iniciar_sesion():
         return jsonify({"status": "error", "message": "Celular no encontrado"}), 400
     resultado = asyncio.run(iniciar_sesion_async(celular.numero, celular.app_id, celular.api_hash))
     return jsonify(resultado)
-
-
-""" @bp.route('/v1/verificarcode', methods=['POST'])
-def verificar_codigo():
-    data = request.json
-    id_celular = data.get("id_celular")
-    codigo = data.get("codigo")
-    celular = Celular.query.get(id_celular)
-    if not celular:
-        return jsonify({"status": "error", "message": "Celular no encontrado"}), 400
-    numero = celular.numero
-    api_id = celular.app_id
-    api_hash = celular.api_hash
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    resultado = loop.run_until_complete(verificar_codigo_async(numero, codigo, api_id, api_hash))
-    return jsonify(resultado) """
 
 @bp.route('/v1/verificarcode', methods=['POST'])
 def verificar_codigo():
