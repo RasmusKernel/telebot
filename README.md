@@ -79,7 +79,7 @@ Cuerpo:
 
 1️⃣ Guardar un número 📲
 ```
-URL: /api/telegram/guardar_numero
+URL: /api/telegram/v1/guardar_numero
 
 Método: POST
 
@@ -94,7 +94,7 @@ Cuerpo:
 ```
 2️⃣ Listar números 📋
 ```
-URL: /api/telegram/listar_numeros
+URL: /api/telegram/v1/listar_numeros
 
 Método: GET
 
@@ -113,7 +113,7 @@ Respuesta:
 ```
 3️⃣ Enviar mensaje ✉️
 ```
-URL: /api/telegram/enviar_mensaje
+URL: /api/telegram/v1/enviar_mensaje
 
 Método: POST
 
