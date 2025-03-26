@@ -3,3 +3,4 @@ Flask-SQLAlchemy
 mysql-connector-python
 Telethon
 Pydantic
+requests
