@@ -53,7 +53,7 @@ El servidor se ejecutará en http://localhost:5000
 📡 Endpoints Disponibles
 GUARDAR SESION ✉️
 ```
-http://localhost:5000/v1/codigo
+http://localhost:5000/api/telegram/v1/codigo
 
 Método: POST
 
@@ -66,7 +66,7 @@ Cuerpo:
 
 COMPROBAR CODIGO ENVIADO ✉️
 ```
-http://127.0.0.1:5000/v1/verificarcode
+http://127.0.0.1:5000/api/telegram/v1/verificarcode
 Método: POST
 
 Cuerpo:
@@ -79,7 +79,7 @@ Cuerpo:
 
 1️⃣ Guardar un número 📲
 ```
-URL: /guardar_numero
+URL: /api/telegram/guardar_numero
 
 Método: POST
 
@@ -94,7 +94,7 @@ Cuerpo:
 ```
 2️⃣ Listar números 📋
 ```
-URL: /listar_numeros
+URL: /api/telegram/listar_numeros
 
 Método: GET
 
@@ -113,7 +113,7 @@ Respuesta:
 ```
 3️⃣ Enviar mensaje ✉️
 ```
-URL: /enviar_mensaje
+URL: /api/telegram/enviar_mensaje
 
 Método: POST
 
