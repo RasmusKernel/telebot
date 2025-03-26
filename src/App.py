@@ -1,13 +1,6 @@
-from flask import Flask
-from shared.database.Database import init_db
-from modules.Tme.infrastructure.Telegram_Routes import bp as telegram_bp
+from src.shared.Server import create_app
 
-def create_app():
-    app = Flask(__name__)
-    init_db(app)
-    app.register_blueprint(telegram_bp)
-    return app
+app = create_app()
 
-if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
