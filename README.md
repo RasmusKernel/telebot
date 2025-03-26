@@ -51,6 +51,31 @@ python app.py
 El servidor se ejecutará en http://localhost:5000
 
 📡 Endpoints Disponibles
+GUARDAR SESION ✉️
+```
+http://localhost:5000/v1/codigo
+
+Método: POST
+
+Cuerpo:
+
+{
+  "id_celular": 1
+}
+```
+
+COMPROBAR CODIGO ENVIADO ✉️
+```
+http://127.0.0.1:5000/v1/verificarcode
+Método: POST
+
+Cuerpo:
+
+{
+    "id_celular": 1,
+    "codigo": "xxxxx"
+}
+```
 
 1️⃣ Guardar un número 📲
 ```
@@ -109,7 +134,6 @@ Respuesta:
 }
 ```
 
-//28329071
-//705daf3bcdb68e016ea8c54b79f844a2
+
 
 
