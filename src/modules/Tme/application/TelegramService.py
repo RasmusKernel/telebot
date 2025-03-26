@@ -3,7 +3,7 @@ import requests
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
-from src.modules.Tme.domain.TelegramRepository import TelegramRepository
+from modules.Tme.domain.TelegramRepository import TelegramRepository
 
 phone_code_cache = {}
 

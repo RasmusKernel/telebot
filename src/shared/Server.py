@@ -1,6 +1,6 @@
 from flask import Flask
-from src.shared.database.Database import init_db
-from src.modules.Tme.infrastructure.TelegramRoutes import telegram_bp
+from shared.database.Database import init_db
+from modules.Tme.infrastructure.TelegramRoutes import telegram_bp
 
 def create_app():
     app = Flask(__name__)

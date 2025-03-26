@@ -1,4 +1,4 @@
-from src.shared.database.Database import db
+from shared.database.Database import db
 
 class Celular(db.Model):
     id = db.Column(db.Integer, primary_key=True)

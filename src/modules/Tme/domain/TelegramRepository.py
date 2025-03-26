@@ -1,5 +1,5 @@
-from src.modules.Tme.domain.Telegram import Celular, MensajeEnviado
-from src.shared.database.Database import db
+from modules.Tme.domain.Telegram import Celular, MensajeEnviado
+from shared.database.Database import db
 
 class TelegramRepository:
     @staticmethod

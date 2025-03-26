@@ -1,4 +1,4 @@
-from src.shared.Server import create_app
+from shared.Server import create_app
 
 app = create_app()
 

@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 import asyncio
-from src.modules.Tme.application.TelegramService import TelegramService
-from src.modules.Tme.domain.TelegramRepository import TelegramRepository
-from src.modules.Tme.domain.Telegram import Celular
-from src.shared.database.Database import db
+from modules.Tme.application.TelegramService import TelegramService
+from modules.Tme.domain.TelegramRepository import TelegramRepository
+from modules.Tme.domain.Telegram import Celular
+from shared.database.Database import db
 
 telegram_bp = Blueprint("telegram", __name__)
 
