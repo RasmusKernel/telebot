@@ -7,7 +7,7 @@ from shared.database.Database import db
 
 telegram_bp = Blueprint("telegram", __name__)
 
-@telegram_bp.route('/enviar_mensaje', methods=['POST'])
+@telegram_bp.route('/v1/enviar_mensaje', methods=['POST'])
 def api_enviar_mensaje():
     data = request.json
     if not all(k in data for k in ("id_celular", "destinatario", "mensaje", "titulo")):
@@ -21,7 +21,7 @@ def api_enviar_mensaje():
     )
     return jsonify(resultado)
 
-@telegram_bp.route('/guardar_numero', methods=['POST'])
+@telegram_bp.route('/v1/guardar_numero', methods=['POST'])
 def api_guardar_numero():
     data = request.json
     if not all(k in data for k in ("numero", "app_id", "api_hash", "nombre")):
@@ -39,7 +39,7 @@ def api_guardar_numero():
     db.session.commit()
     return jsonify({"status": "success", "message": f"Número {data['numero']} guardado correctamente."}), 201
 
-@telegram_bp.route('/listar_numeros', methods=['GET'])
+@telegram_bp.route('/v1/listar_numeros', methods=['GET'])
 def api_listar_numeros():
     numeros = Celular.query.with_entities(Celular.id, Celular.numero, Celular.nombre).all()
     return jsonify({
