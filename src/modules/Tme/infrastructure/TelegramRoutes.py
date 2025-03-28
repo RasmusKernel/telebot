@@ -4,26 +4,66 @@ from modules.Tme.application.TelegramService import TelegramService
 from modules.Tme.domain.TelegramRepository import TelegramRepository
 from modules.Tme.domain.Telegram import Celular
 from shared.database.Database import db
+from modules.RabbitMQ.infrastructure.RabbitMQPublisher import publish_message
 
 telegram_bp = Blueprint("telegram", __name__)
 
+def obtener_payload():
+
+    try:
+        data = request.get_json(force=True)
+        if not data:
+            raise ValueError("No se recibió payload JSON")
+        return data, None
+    except Exception as e:
+        return None, str(e)
+
 @telegram_bp.route('/v1/enviar_mensaje', methods=['POST'])
 def api_enviar_mensaje():
-    data = request.json
+    data, error = obtener_payload()
+    if error:
+        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+
     if not all(k in data for k in ("id_celular", "destinatario", "mensaje", "titulo")):
         return jsonify({"status": "error", "message": "Todos los parámetros son obligatorios"}), 400
 
-    archivo_url = data.get("archivo_url", None)
+    archivo_urls = data.get("archivo_urls", [])
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     resultado = loop.run_until_complete(
-        TelegramService.enviar_mensaje(data["id_celular"], data["destinatario"], data["mensaje"], data["titulo"], archivo_url)
+        TelegramService.enviar_mensaje(
+            data["id_celular"],
+            data["destinatario"],
+            data["mensaje"],
+            data["titulo"],
+            archivo_urls
+        )
     )
     return jsonify(resultado)
 
+@telegram_bp.route('/v1/enviar_mensaje/rabbit', methods=['POST'])
+def api_enviar_mensaje_rabbit():
+    data, error = obtener_payload()
+    if error:
+        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+
+    if not all(k in data for k in ("id_celular", "destinatario", "mensaje", "titulo")):
+        return jsonify({"status": "error", "message": "Todos los parámetros son obligatorios"}), 400
+
+    data["archivo_urls"] = data.get("archivo_urls", [])
+
+    try:
+        publish_message("telegram_queue", data)
+        return jsonify({"status": "success", "message": "Mensaje publicado en la cola para procesar."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
 @telegram_bp.route('/v1/guardar_numero', methods=['POST'])
 def api_guardar_numero():
-    data = request.json
+    data, error = obtener_payload()
+    if error:
+        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+
     if not all(k in data for k in ("numero", "app_id", "api_hash", "nombre")):
         return jsonify({"status": "error", "message": "Faltan datos en la solicitud"}), 400
 
@@ -49,23 +89,39 @@ def api_listar_numeros():
 
 @telegram_bp.route('/v1/codigo', methods=['POST'])
 def iniciar_sesion():
-    data = request.json
+    data, error = obtener_payload()
+    if error:
+        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+
     id_celular = data.get("id_celular")
+    if not id_celular:
+        return jsonify({"status": "error", "message": "El campo id_celular es obligatorio"}), 400
+
     celular = Celular.query.get(id_celular)
     if not celular:
         return jsonify({"status": "error", "message": "Celular no encontrado"}), 400
 
-    resultado = asyncio.run(TelegramService.iniciar_sesion_async(celular.numero, celular.app_id, celular.api_hash))
+    resultado = asyncio.run(
+        TelegramService.iniciar_sesion_async(celular.numero, celular.app_id, celular.api_hash)
+    )
     return jsonify(resultado)
 
 @telegram_bp.route('/v1/verificarcode', methods=['POST'])
 def verificar_codigo():
-    data = request.json
+    data, error = obtener_payload()
+    if error:
+        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+
     id_celular = data.get("id_celular")
     codigo = data.get("codigo")
+    if not id_celular or not codigo:
+        return jsonify({"status": "error", "message": "id_celular y codigo son obligatorios"}), 400
+
     celular = Celular.query.get(id_celular)
     if not celular:
         return jsonify({"status": "error", "message": "Celular no encontrado"}), 400
 
-    resultado = asyncio.run(TelegramService.verificar_codigo_async(celular.numero, codigo, celular.app_id, celular.api_hash))
+    resultado = asyncio.run(
+        TelegramService.verificar_codigo_async(celular.numero, codigo, celular.app_id, celular.api_hash)
+    )
     return jsonify(resultado)

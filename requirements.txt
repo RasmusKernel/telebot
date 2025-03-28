@@ -4,3 +4,5 @@ mysql-connector-python
 Telethon
 Pydantic
 requests
+pika
+aiohttp
