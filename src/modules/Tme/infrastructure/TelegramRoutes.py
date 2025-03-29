@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, request, jsonify
 import asyncio
 from modules.Tme.application.TelegramService import TelegramService
@@ -9,7 +10,6 @@ from modules.RabbitMQ.infrastructure.RabbitMQPublisher import publish_message
 telegram_bp = Blueprint("telegram", __name__)
 
 def obtener_payload():
-
     try:
         data = request.get_json(force=True)
         if not data:
@@ -24,37 +24,30 @@ def api_enviar_mensaje():
     if error:
         return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
 
-    if not all(k in data for k in ("id_celular", "destinatario", "mensaje", "titulo")):
+    if not all(k in data for k in ("id_celular", "destinatario", "messages")):
         return jsonify({"status": "error", "message": "Todos los parámetros son obligatorios"}), 400
 
-    archivo_urls = data.get("archivo_urls", [])
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     resultado = loop.run_until_complete(
         TelegramService.enviar_mensaje(
             data["id_celular"],
             data["destinatario"],
-            data["mensaje"],
-            data["titulo"],
-            archivo_urls
+            data["messages"]
         )
     )
     return jsonify(resultado)
 
 @telegram_bp.route('/v1/enviar_mensaje/rabbit', methods=['POST'])
 def api_enviar_mensaje_rabbit():
-    data, error = obtener_payload()
-    if error:
-        return jsonify({"status": "error", "message": f"Error al decodificar JSON: {error}"}), 400
+    data = request.get_json(force=True)
 
-    if not all(k in data for k in ("id_celular", "destinatario", "mensaje", "titulo")):
-        return jsonify({"status": "error", "message": "Todos los parámetros son obligatorios"}), 400
-
-    data["archivo_urls"] = data.get("archivo_urls", [])
+    if not all(k in data for k in ("id_celular", "destinatario", "messages")):
+        return jsonify({"status": "error", "message": "Faltan datos obligatorios"}), 400
 
     try:
-        publish_message("telegram_queue", data)
-        return jsonify({"status": "success", "message": "Mensaje publicado en la cola para procesar."})
+        publish_message("telegram_queue", json.dumps(data))  
+        return jsonify({"status": "success", "message": "Mensaje enviado a la cola de RabbitMQ."})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     

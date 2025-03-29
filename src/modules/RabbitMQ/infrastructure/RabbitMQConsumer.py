@@ -9,6 +9,7 @@ class RabbitMQConsumer:
         self.queue_name = queue_name
         self.app = app
         credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
+
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(
                 host=RABBITMQ_HOST,
@@ -21,44 +22,50 @@ class RabbitMQConsumer:
         self.channel.basic_qos(prefetch_count=1)
 
     def callback(self, ch, method, properties, body):
-        mensaje = json.loads(body)
-        print(f" Mensaje recibido en la cola: {mensaje}")
-        
-        archivo_urls = mensaje.get("archivo_urls", [])
-        if not isinstance(archivo_urls, list):
-            archivo_urls = [archivo_urls]
-
         try:
+            if isinstance(body, bytes):
+                body = body.decode("utf-8")
+
+            mensaje = json.loads(body)
+            if isinstance(mensaje, str):  
+                mensaje = json.loads(mensaje)
+
+            if not isinstance(mensaje, dict):
+                raise ValueError("El mensaje recibido no tiene el formato esperado.")
+
+            print(f"Mensaje recibido: {mensaje}")
+
+            id_celular = mensaje.get("id_celular")
+            destinatario = mensaje.get("destinatario")
+            messages = mensaje.get("messages", [])
+
+            if not id_celular or not destinatario or not messages:
+                raise ValueError("El mensaje recibido no tiene todos los campos requeridos.")
+
             if self.app:
                 with self.app.app_context():
                     resultado = asyncio.run(
-                        TelegramService.enviar_mensaje(
-                            mensaje["id_celular"],
-                            mensaje["destinatario"],
-                            mensaje["mensaje"],
-                            mensaje["titulo"],
-                            archivo_urls
-                        )
+                        TelegramService.enviar_mensaje(id_celular, destinatario, messages)
                     )
             else:
                 resultado = asyncio.run(
-                    TelegramService.enviar_mensaje(
-                        mensaje["id_celular"],
-                        mensaje["destinatario"],
-                        mensaje["mensaje"],
-                        mensaje["titulo"],
-                        archivo_urls
-                    )
+                    TelegramService.enviar_mensaje(id_celular, destinatario, messages)
                 )
-            print(f" Resultado del envío: {resultado}")
+
+            print(f"Mensaje procesado con éxito: {resultado}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        except json.JSONDecodeError:
+            print("Error: No se pudo decodificar el JSON.")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
         except Exception as e:
-            print(f" Error al enviar mensaje: {str(e)}")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            print(f"Error al procesar mensaje: {str(e)}")
+            print(f"Contenido del mensaje fallido: {body}")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
     def start_consuming(self):
-        print(f" Consumidor iniciado, esperando mensajes en la cola '{self.queue_name}'...")
+        print(f"Esperando mensajes en la cola '{self.queue_name}'...")
         self.channel.basic_consume(queue=self.queue_name, on_message_callback=self.callback)
         self.channel.start_consuming()
 
