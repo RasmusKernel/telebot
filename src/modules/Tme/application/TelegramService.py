@@ -1,6 +1,7 @@
 import asyncio
 import os
 import aiohttp
+import random
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
@@ -24,7 +25,7 @@ class TelegramService:
                     print(f"Error al descargar {url}")
                     return None
 
-    @staticmethod
+    """ @staticmethod
     async def enviar_mensaje(id_celular, destinatario, messages):
         credencial = TelegramRepository.obtener_credenciales(id_celular)
         if not credencial:
@@ -89,7 +90,156 @@ class TelegramService:
                 os.remove(archivo)
 
         await client.disconnect()
-        return respuesta
+        return respuesta """
+    
+
+    """ @staticmethod
+    async def enviar_mensaje(id_celular, destinatario, messages):
+        credencial = TelegramRepository.obtener_credenciales(id_celular)
+        if not credencial:
+            return {"status": "error", "message": "No se encontraron credenciales"}
+
+        numero = credencial.numero
+        api_id = credencial.app_id
+        api_hash = credencial.api_hash
+        session_path = f"session/{numero.replace('+', '')}.session"
+        os.makedirs("session", exist_ok=True)
+
+        client = TelegramClient(session_path, api_id, api_hash)
+        await client.start(numero)
+
+        resultados = []
+        archivos_locales = [] 
+        enviados = set()
+
+        for destinatario in destinatario:
+            if destinatario in enviados:
+                continue 
+
+            try:
+                contact = InputPhoneContact(client_id=0, phone=destinatario, first_name=destinatario, last_name="")
+                result = await client(ImportContactsRequest([contact]))
+
+                if not result.users:
+                    resultados.append({"destinatario": destinatario, "status": "error", "message": "Usuario no encontrado"})
+                    continue
+
+                user = result.users[0]
+
+                download_tasks = {
+                    idx: TelegramService.descargar_archivo(msg["content"]["body"])
+                    for idx, msg in enumerate(messages)
+                    if msg.get("tipo") in ["imagen", "documento", "video", "audio"] and msg["content"]["body"].startswith("http")
+                }
+                download_results = await asyncio.gather(*download_tasks.values(), return_exceptions=True)
+                download_results = {key: value for key, value in zip(download_tasks.keys(), download_results)}
+
+                for idx, msg in enumerate(messages):
+                    tipo = msg.get("tipo")
+                    contenido = msg["content"]["body"]
+                    footer = msg["content"].get("footer", "")
+
+                    if tipo == "texto":
+                        await client.send_message(user.id, contenido)
+                    elif tipo in ["imagen", "documento", "video", "audio"]:
+                        archivo_local = download_results.get(idx)
+                        if archivo_local:
+                            archivos_locales.append(archivo_local)
+                            await client.send_file(user.id, archivo_local, caption=footer)
+
+                    await asyncio.sleep(7)
+
+                TelegramRepository.guardar_mensaje(numero, destinatario, "Mensaje enviado", "Multimedia")
+                resultados.append({"destinatario": destinatario, "status": "success", "message": "Mensaje enviado"})
+                enviados.add(destinatario)  # guarda el número para evitar repetirlo
+
+            except Exception as e:
+                resultados.append({"destinatario": destinatario, "status": "error", "message": str(e)})
+
+            await asyncio.sleep(18) 
+
+        for archivo in archivos_locales:
+            if os.path.exists(archivo):
+                os.remove(archivo)
+
+        await client.disconnect()
+        return resultados """
+    
+    @staticmethod
+    async def enviar_mensaje(id_celular_list, destinatarios, messages):
+        if not id_celular_list:
+            return {"status": "error", "message": "Lista de id_celular vacía"}
+        
+        resultados = []
+        archivos_locales = []
+        enviados = set()
+        num_disponibles = len(id_celular_list)
+        
+        for i, destinatario in enumerate(destinatarios):
+            id_celular = id_celular_list[i % num_disponibles]  # Rotar entre los números disponibles
+            credencial = TelegramRepository.obtener_credenciales(id_celular)
+
+            if not credencial:
+                resultados.append({"destinatario": destinatario, "status": "error", "message": "No se encontraron credenciales"})
+                continue
+            
+            numero = credencial.numero
+            api_id = credencial.app_id
+            api_hash = credencial.api_hash
+            session_path = f"session/{numero.replace('+', '')}.session"
+            os.makedirs("session", exist_ok=True)
+            
+            client = TelegramClient(session_path, api_id, api_hash)
+            await client.start(numero)
+            
+            try:
+                contact = InputPhoneContact(client_id=0, phone=destinatario, first_name=destinatario, last_name="")
+                result = await client(ImportContactsRequest([contact]))
+                
+                if not result.users:
+                    resultados.append({"destinatario": destinatario, "status": "error", "message": "Usuario no encontrado"})
+                    continue
+                
+                user = result.users[0]
+                download_tasks = {
+                    idx: TelegramService.descargar_archivo(msg["content"]["body"])
+                    for idx, msg in enumerate(messages)
+                    if msg.get("tipo") in ["imagen", "documento", "video", "audio"] and msg["content"]["body"].startswith("http")
+                }
+                download_results = await asyncio.gather(*download_tasks.values(), return_exceptions=True)
+                download_results = {key: value for key, value in zip(download_tasks.keys(), download_results)}
+                
+                for idx, msg in enumerate(messages):
+                    tipo = msg.get("tipo")
+                    contenido = msg["content"]["body"]
+                    footer = msg["content"].get("footer", "")
+                    
+                    if tipo == "texto":
+                        await client.send_message(user.id, contenido)
+                    elif tipo in ["imagen", "documento", "video", "audio"]:
+                        archivo_local = download_results.get(idx)
+                        if archivo_local:
+                            archivos_locales.append(archivo_local)
+                            await client.send_file(user.id, archivo_local, caption=footer)
+                    
+                    await asyncio.sleep(15)  # Esperar entre mensajes para evitar bloqueos
+                
+                TelegramRepository.guardar_mensaje(numero, destinatario, "Mensaje enviado", "Multimedia")
+                resultados.append({"destinatario": destinatario, "status": "success", "message": "Mensaje enviado"})
+                enviados.add(destinatario)
+                
+            except Exception as e:
+                resultados.append({"destinatario": destinatario, "status": "error", "message": str(e)})
+            
+            await asyncio.sleep(30)  # Evitar demasiadas peticiones seguidas
+            await client.disconnect()
+        
+        for archivo in archivos_locales:
+            if os.path.exists(archivo):
+                os.remove(archivo)
+        
+        return resultados
+        
 
     @staticmethod
     async def iniciar_sesion_async(numero, api_id, api_hash):

@@ -38,7 +38,7 @@ def api_enviar_mensaje():
     )
     return jsonify(resultado)
 
-@telegram_bp.route('/v1/enviar_mensaje/rabbit', methods=['POST'])
+""" @telegram_bp.route('/v1/enviar_mensaje/rabbit', methods=['POST'])
 def api_enviar_mensaje_rabbit():
     data = request.get_json(force=True)
 
@@ -49,7 +49,24 @@ def api_enviar_mensaje_rabbit():
         publish_message("telegram_queue", json.dumps(data))  
         return jsonify({"status": "success", "message": "Mensaje enviado a la cola de RabbitMQ."})
     except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500 """
+
+
+@telegram_bp.route('/v1/enviar_mensaje/rabbit', methods=['POST'])
+def api_enviar_mensaje_rabbit():
+    data = request.get_json(force=True)
+    if not all(k in data for k in ("id_celular", "destinatario", "messages")):
+        return jsonify({"status": "error", "message": "Faltan datos obligatorios"}), 400
+    if not isinstance(data["id_celular"], list) or not data["id_celular"]:
+        return jsonify({"status": "error", "message": "id_celular debe ser una lista con al menos un elemento"}), 400
+    if not isinstance(data["destinatario"], list):
+        return jsonify({"status": "error", "message": "destinatario debe ser una lista"}), 400
+    try:
+        publish_message("telegram_queue", json.dumps(data))
+        return jsonify({"status": "success", "message": "Mensajes enviados a la cola de RabbitMQ."})
+    except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
     
 @telegram_bp.route('/v1/guardar_numero', methods=['POST'])
 def api_guardar_numero():
